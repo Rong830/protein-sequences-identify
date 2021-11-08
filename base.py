@@ -3,8 +3,8 @@
 import sys
 import os, subprocess, shutil
 
-# Make the bash script excutable
-subprocess.call("chmod 700 esearch.sh",shell=True)
+
+
 
 # Ask the user to enter the aim protein
 def ask_the_aim_pro():
@@ -45,3 +45,41 @@ def count_relative_protein():
             print("Sorry. I don't understand what you mean. Please start over.")
             ask_the_aim_pro()
 
+# Use esummary to bireflly analyze the variety.
+def species_size():
+    if os.path.isfile("type.txt"):
+        os.remove("type.txt") # If there are a file named "type.txt", then delete it
+    count = 0
+    a = int(input("How many kinds of species do you want to have in your dataset? "))
+    while True:
+        if a <= 0:
+            a = int(input("I don't think you enter the correct number of species, please enter again."))
+        else:
+            break
+    # sore the uids in a list
+    uids = list(open("aim.uid").read().rstrip().split())
+    # print(uids)
+    for i in uids:
+        species = []
+        count += 1
+        print('Now what we were finding the species for uid: ',i)
+        subprocess.call('esummary -db protein -id '+str(i)+' | grep "<SubName>" >> type.txt', shell=True)
+        open_file = open("type.txt").read().split("\n ") # Count the number of species bt counting the line in file type, then use 'set' to make each species unique.
+        species = list(open_file)
+#        print(species)
+#        print(len(set(species)))
+        if len(set(species)) >= a: # When there are more than a different types of species, then stop summarizing
+            print("There are "+str(count)+" proteins in your dataset with "+str(len(set(species))) + " species in it, it contains the number of species you wanted or reached the maximun number of species in the total dataset.")
+            break
+    return uids[:count], set(species)       
+
+
+
+
+
+
+
+
+ask_the_aim_pro()
+count_relative_protein()
+data_uids, species = species_size()
