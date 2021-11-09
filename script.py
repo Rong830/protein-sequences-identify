@@ -29,9 +29,9 @@ def file_check(file_name):
 
 
 # Check if there are special character in the string
-def test_special(str):
+def test_special(s):
     regular = re.compile(r'[a-zA-Z0-9_-]')
-    if len(str) == len(regular.findall(str)):
+    if len(s) == len(regular.findall(s)):
         return True
     else :
         return False
@@ -74,16 +74,16 @@ def ask_the_aim_pro():
         for character in tax:
             if character not in string.ascii_letters :
                 print_deco("I don't think number should be in taxonomic group name, we will search without group name.")
-                tax=True
+                tax = False
     else:
         print_deco("It's ok that you don't know the taxonomic group, we can continue searching.")
-        tax=True
+        tax = False
     print_deco("Finding the uids that related to " + str(pro))
     # Use esearch then efetch to get the UID values
-    if tax:
-        return pro, "No taxonomic"
-    else:
+    if tax != False:
         return pro, tax
+    else:
+        return pro, "No taxonomic"
     
 
 def mkdir(folder_name):
@@ -140,7 +140,7 @@ def test_number(n):
             n = input("I don't think you enter the correct number, please enter again. ")
     return int(n)
 
-def seq_num_check(num)
+def seq_num_check(num):
     # If the number of sequences is more than 2500, we can't continue due to the huge data.
     if num >= 2500:
         print_deco("Opps! There are more than 2500 sequences which is too large for us to handle. \nPlease restart this program with other protein.")
@@ -175,7 +175,7 @@ os.chdir('{0}/{1}_{2}'.format(os.getcwd(),pro,tax))
 
 # Download the data and count the number of sequences and species. 
 file_check(str(pro) + "_" + str(tax) + ".txt")
-subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -db protein -format docsum | xtract -pattern DocumentSummary -element Organism > {0}_{1}.txt'.format(pro,tax), shell=True)
+subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -format docsum | xtract -pattern DocumentSummary -element Organism > {0}_{1}.txt'.format(pro,tax), shell=True)
 
 # Count the number of sequences and species.
 seq_num = len(open('{0}_{1}.txt'.format(pro,tax)).readlines())
@@ -184,7 +184,9 @@ species_num = len(set(open('{0}_{1}.txt'.format(pro,tax)).readlines()))
 seq_num_check(seq_num)
 
 # Tell the user what we have found and whether the user want to continue.
-ans = input_deco("I have found " + str(species) + "species and " + str(pro) + "from what you ask for.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
+ans = input_deco("I have found " + str(species_num) + "species and " + str(pro) + "from what you ask for.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
 if ans == 'q':
     print_deco("Have a nice day!/nBye~")
     exit()
+
+
