@@ -1,15 +1,15 @@
 #!/usr/local/bin/python3
 
 ################################################################
-# Before Start this Assignment
+# Before Start this Assignment, Things I need to check
 
-# Things I need to check
-# 1. check the inputs is correct (without special characers)
-# 2. check the number of relevent protein before download it all (more than 3000 or equal to 0 will start over, less than 25 will give warning)
-# 3. check species number (too small?)(defalt)
-
-
-
+# 1. Check the inputs is correct (without special characers)
+# 2. Check the number of relevent protein before download it all (more than 3000 or equal to 0 will start over, less than 25 will give warning)
+# 3. Check species number (too small?)(defalt)
+# 4. Check if the file or folder is existed before creating it
+# 5. Check the conservation level and plot them correctly
+# 6. How to multiple scan the the motif by prosite database
+# 7. Conclude the results about motif
 
 ################################################################
 # Import section
@@ -67,7 +67,7 @@ def ask_the_aim_pro():
     while test_special(pro) != True:
         pro = input_deco("You in put included special character which is not allowed. \nPlease tell me the protein name you are interested in: " )
     a = input_deco("Do you know which taxonomic group it is?(y/n) " )
-    if a == 'y':
+    if a.lower() == 'y':
         tax = input_deco("Pleas tell me the name of its taxonomic group: " )
         while test_special(tax) != True:
             tax = input_deco("You in put included special character which is not allowed. \nPlease tell me the taxonomic group name: " )
@@ -126,7 +126,7 @@ def count_relative_protein(pro, tax):
         ask_the_aim_pro()
     if count <= 25:
         i = input_deco("WARNINGS! There are less than 25 relative protein! Please check if you have enter the right protein name! \nIf you want to start over please type 'y', if you want to continue with this data please type 'c'")
-        if i != "c":
+        if i.lower() != "c":
             print_deco("Sorry. I don't understand what you mean. Let's start over.")
             ask_the_aim_pro()
 
@@ -147,16 +147,44 @@ def seq_num_check(num):
         exit()
     
 
-def clustao_align():   
-    file_check("align_output.txt")
+def clustalo_align(pro, tax):   
     print_deco("I'm currently aligning the sequences.")
-    subprocess.call("clustalo -i data.fa -o align_output.txt -v --force", shell=True) # Using clustao to align the conservation interval between the sequences.
+    # Align all the protein sequences using clustalo
+    # With '--force' we don't need to check whether the ouput file is exsited.
+    subprocess.call('clustalo -i {0}_{1}.fasta -o {0}_{1}_align.fasta -v --force'.format(pro,tax), shell =True)
 
 
-def plotcon():
+def plotcon(pro, tax):
     print_deco("Now, let's plot consercation of a sequence alignment.")
     file_check("plotcon.svg")
-    subprocess.call("plotcon -sequences align_output.txt -winsize 4 -graph svg", shell = True)
+    subprocess.call('plotcon -sequence ' + str(pro) + '_' + str(tax) + '_align.fasta -graph svg', shell=True)
+    #ask the user if he/she want to visualise the result.
+    ans = input_deco("Do you want to see the graph of the conservaton? (y/n)")
+    if ans.lower() == 'y':
+	    subprocess.call('firefox plotcon.svg&', shell=True)
+    print_deco("This graph is also saved, you could check it later if you want to.")
+
+
+def clustalo_percent_change(pro, tax):
+    #ask the user if he/she want to see more details about clustalo.
+    ans = input_deco("Do you want to calculate the percetage changes by using infoalign? (y/n) ")
+    if ans.lower() == 'y':
+        #download name part and %change part, and make a dictionary after sort.
+        print_deco("I'm calculating now, just be patient.")
+        file_check('output1.infoalign')
+        file_check('output2.infoalign')
+        subprocess.call('infoalign -sequence ' + str(pro) + '_' + str(tax) + '_align.fasta -only -name -outfile output1.infoalign', shell=True)
+        subprocess.call('infoalign -sequence ' + str(pro) + '_' + str(tax) + '_align.fasta -only -change -outfile output2.infoalign', shell=True)
+        f1 = open("output1.infoalign").read().rstrip("\n") 
+        keys = list(f1.split("\n")) 
+        f2 = open("output2.infoalign").read().rstrip("\n") 
+        list2 = f2.split("\n") 
+        values = list(map(float, list2))
+        dic = dict(zip(keys, values))
+        dic = sorted(dic.items(), key=lambda values:values[1])
+        print_deco("The percentage changes are below and they are sorted from low to hign")
+        print(dic)
+
 
 
 
@@ -184,9 +212,27 @@ species_num = len(set(open('{0}_{1}.txt'.format(pro,tax)).readlines()))
 seq_num_check(seq_num)
 
 # Tell the user what we have found and whether the user want to continue.
-ans = input_deco("I have found " + str(species_num) + "species and " + str(pro) + "from what you ask for.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
+ans = input_deco("I have found " + str(species_num) + " species and " + str(pro) + " from what you ask for.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
 if ans == 'q':
     print_deco("Have a nice day!/nBye~")
     exit()
+
+
+### Step 2. Analyze the conservation between the sequences we found.
+# Download the fasta files to the current directory.
+subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -format fasta > {0}_{1}.fasta'.format(pro,tax), shell=True)
+
+# Using clustalo to align the consevation area beatween all the sequences.
+clustalo_align(pro, tax)
+plotcon(pro, tax)
+clustalo_percent_change(pro, tax)
+
+
+
+
+
+
+
+
 
 
