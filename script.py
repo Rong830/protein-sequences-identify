@@ -19,6 +19,7 @@ import os
 import subprocess
 import re
 import shutil
+import glob
 
 ################################################################
 #Function defination area.
@@ -43,7 +44,7 @@ def test_special(s):
 def print_deco(str):
     os.system('clear')# Clear the screen
     print("*********************************************************\n\n\n")
-    print(str+"\n\n\n\n*********************************************************")
+    input(str+"\n\n\n***************(Press any key to continue)***************\n*********************************************************")
     
 
 # A decoration of printing 
@@ -194,8 +195,48 @@ def create_blastdb(pro, tax):
     print_deco('I have now created blastdb.')
 
 
+def pepstats():
+    subprocess.call("cp ../acc_bitscore_sorted.fasta .", shell=True) 
+    subprocess.call("cp ../acc_bitscore_sorted.txt .", shell=True)
+    # Seperated the fasta sequences by using seqresplit
+    print_deco("Please press enter to continue.")
+    subprocess.call("seqretsplit -sequence acc_bitscore_sorted.fasta -sformat fasta -osformat fasta",shell=True)
+    # Uses EMBOSS pepstats to get protein statistics from the fasta files and save them to an output. 
+    file_name = []
+    file_name = glob.glob("./*.fasta")
+    for i in file_name:
+        subprocess.call("pepstats -sequence " + str(i) + " -outfile " + str(i) + ".pepstats", shell = True)
+    print_deco("I have finish searching ever motif in the sequences you selected! \nYou can review the result in the folder called 'motif'.")
 
 
+# Check if the prosite files are in user's home directory.
+def PROSITE_db_check(prosite_db_directory = '/localdisk/software/EMBOSS-6.6.0/share/EMBOSS/data/PROSITE/prosite.lines'):
+    if os.path.exists(prosite_db_directory):
+        print_deco("You have PROSITE database in your home directory, we can continue to the next step.")
+    else: 
+        print('Prosite file \"prosite.lines\" was not found. Attempting to create by downloading .dat & .doc files from EMB=EBI')
+        home = os.path.expanduser('~')
+        print_deco("I'm checking if you have already download the PROSITE database in your home directory.")
+        if os.path.exists(home+"/prosite/prosite.doc") and os.path.exists(home+"/prosite/prosite.dat"):
+            print_deco('You have all the database file we needed. We can continue to the next step.')
+        else: 
+            print("You don't have the files we needed.\nI'm donwloading everything you need now.")
+            if not os.path.exists(home+"/prosite"):
+                os.mkdir(home+"/prosite")
+                subprocess.call("wget http://ftp.ebi.ac.uk/pub/databases/prosite/prosite.doc -O "+home+"/prosite/prosite.doc", shell = True)
+                subprocess.call("wget http://ftp.ebi.ac.uk/pub/databases/prosite/prosite.dat -O "+home+"/prosite/prosite.dat", shell = True)
+                print_deco('You have all the database file we needed. We can continue to the next step.')
+                print_deco("Uses prosextract to process prosite database before we start searching.")
+                subprocess.call("prosextract -prositedir PROSITE", shell = True)
+
+
+# Search motifs from PROSITE database by using patmatmotifs.
+def motifs_search(): 
+    file_name = []
+    file_name = glob.glob("./*.fasta")
+    for i in file_name:
+        file_motif = i.replace('.fasta', '.motif')
+        subprocess.call("patmatmotifs -sequence " + str(i) + " -auto Y -outfile " + str(file_motif), shell =True)
 
 
 
@@ -260,10 +301,7 @@ subprocess.call('blastp -db ' + str(pro) + '_' + str(tax) + '_database -query ' 
 # Creat a dictionary that contains the acc and the bit score.
 blastp_result = {}
 line = []
-for i in open(str(pro) + '_' + str(tax) + '_blast.txt', 'r'):
-    if '#' not in i:
-        line.append(i)
-print(line)
+line = [i for i in open(str(pro) + '_' + str(tax) + '_blast.txt', 'r') if '#' not in i]
 with open(str(pro) + '_' + str(tax) + '_blast_lines.txt', 'w', encoding="utf-8") as my_file:
     my_file.writelines(line)
 for i in line :
@@ -292,12 +330,29 @@ file.close()
 # Use the provided 'pullseq' programme to extract the sequences from the fasta file.
 file_check("acc_bitscore_sorted.fasta")
 print_deco("Now I'm ecxtracting sequencs from a fasta file")
-subprocess.call('/localdisk/data/BPSM/Assignment2/pullseq -i ' + str(pro) + '_' + str(tax) + '_align.fasta -n subject_acc.txt > acc_bitscore_sorted.fasta -v', shell=True)
+subprocess.call('/localdisk/data/BPSM/Assignment2/pullseq -i ' + str(pro) + '_' + str(tax) + '_align.fasta -n acc_bitscore_sorted.txt > acc_bitscore_sorted.fasta -v', shell=True)
 
 # Use plotcon to plot the similar sequences alignment result 
 ans = input_deco("Do you want to see the plot of blast result by plotcon? (y/n)")
 if ans.lower() == 'y':
     plotcon("acc_bitscore_sorted.fasta")
+
+
+
+### Part 3. Scan protein sequence(s) of interest with motifs from the PROSITE database
+# Make a directory to store the seperate sequences files
+mkdir("motif")
+os.chdir("motif")
+pepstats()
+
+# Check it the user have PROSITE database in the home directory.
+PROSITE_db_check()
+# Search motifs from PROSITE database by using patmatmotifs.
+motifs_search()
+
+
+
+
 
 
 
