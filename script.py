@@ -4,22 +4,34 @@
 # Before Start this Assignment, what I have thought
 
 # 1. Check the inputs is correct (without special characers)
-# 2. Check the number of relevent protein before download it all (more than 3000 or equal to 0 will start over, less than 25 will give warning)
+# 2. Check the number of relevent protein before download it all (more than 1000 or equal to 0 will start over, less than 5 will give warning)
 # 3. Check species number (too small?)(defalt)
 # 4. Check if the file or folder is existed before creating it
 # 5. Check the conservation level and plot them correctly
 # 6. How to multiple scan the the motif by prosite database
-# 7. Conclude the results about motif
+# 7. Conclude the results about motif and send summary email to the user
+# 8. Check if the user have the imported package and edirect and PROSITE database
 
 ################################################################
 # Import section
-import string
+def package_check(package):
+    try :
+        import package
+    except :
+        subprocess.call("pip3 install " + str(package), shell = True)
+        import package
+
 import sys
 import os
 import subprocess
 import re
 import shutil
 import glob
+import string
+
+# package_check(seaborn)
+# package_check(package)
+# package_check(package)
 
 ################################################################
 #Function defination area.
@@ -44,7 +56,7 @@ def test_special(s):
 def print_deco(str):
     os.system('clear')# Clear the screen
     print("*********************************************************\n\n\n")
-    input(str+"\n\n\n***************(Press any key to continue)***************\n*********************************************************")
+    input(str+"\n\n\n\n***************(Press any key to continue)***************\n")
     
 
 # A decoration of printing 
@@ -54,6 +66,17 @@ def input_deco(str):
     a = input(str+"\n\n\n\n*********************************************************\n\n")
     return a
 
+
+# Check if the user have edirect in his/her home directory.
+def edirect_check():
+    print_deco('Checking if you have edirect in you home directory')
+    if os.path.isdir(os.path.expanduser('~/edirect')):
+        print_deco('You have edirect in you home space, we can continue now.')
+    else: 
+        print_deco('You do not have installed edirect in your home directory, I will install it for you.')
+        subprocess.call('sh -c "$(curl -fsSL ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"', shell = True)
+        print_deco('You have edirect in you home space, we can continue now.')
+        
 
 #check if there is protein inputted with organism inputted in the database.
 def pro_tax_check(pro,tax):
@@ -91,6 +114,7 @@ def mkdir(folder_name):
         shutil.rmtree(folder_name)
         os.makedirs(folder_name) 
 
+
 # Count the number of relative protein in the database
 def pro_count(pro):
 	count = int(subprocess.check_output("esearch -db protein -query '{0}' | xtract -pattern ENTREZ_DIRECT -element Count".format(pro),shell=True))
@@ -117,8 +141,8 @@ def count_relative_protein(pro, tax):
         pro = input_deco("WARNINGS! \nThere is no such "+str(pro)+" protein in the database, Please start over!\nPlease enter the right name of the protein family:\n")
         ask_the_aim_pro()
     if count <= 5:
-        i = input_deco("WARNINGS! There are less than 5 relative protein! Please check if you have enter the right protein name! \nIf you want to start over please type 'y', if you want to continue with this data please type 'c'")
-        if i.lower() != "c":
+        i = input_deco("WARNINGS! There are less than 5 relative protein! Please check if you have enter the right protein name! \nif you want to continue with this data please type 'y',\nElse we will start over.")
+        if i.lower() != "y":
             print_deco("Sorry. I don't understand what you mean. Let's start over.")
             ask_the_aim_pro()
 
@@ -131,6 +155,7 @@ def test_number(n):
         except :
             n = input("I don't think you entered a number, please enter again. ")
     return int(n)
+
 
 def seq_num_check(num):
     # If the number of sequences is more than 1000, we can't continue due to the huge data.
@@ -176,8 +201,7 @@ def clustalo_percent_change(pro, tax):
         values = list(map(float, list2))
         dic = dict(zip(keys, values))
         dic = sorted(dic.items(), key=lambda values:values[1])
-        ans = input_deco("The percentage changes are sorted from low to hign.\nDo you want to store them? (y/n) ")
-        print(dic)
+        ans = input_deco("The percentage changes are sorted from low to hign.\nDo you want to store them? (y/n) \n\n"+str(dic))
         if ans == 'y':
             # Store the sequeces to the file called acc_bitscore_sorted.txt
             file_check("clustalo_percent_change.txt")
@@ -199,13 +223,13 @@ def pepstats():
     subprocess.call("cp ../acc_bitscore_sorted.fasta .", shell=True) 
     subprocess.call("cp ../acc_bitscore_sorted.txt .", shell=True)
     # Seperated the fasta sequences by using seqresplit
-    print_deco("Please press enter to continue.")
-    subprocess.call("seqretsplit -sequence acc_bitscore_sorted.fasta -sformat fasta -osformat fasta",shell=True)
+    print_deco("I will get protein statistics from the fasta files.")
+    subprocess.call("seqretsplit -sequence acc_bitscore_sorted.fasta -sformat fasta -osformat fasta -auto",shell=True)
     # Uses EMBOSS pepstats to get protein statistics from the fasta files and save them to an output. 
     file_name = []
     file_name = glob.glob("./*.fasta")
     for i in file_name:
-        subprocess.call("pepstats -sequence " + str(i) + " -outfile " + str(i) + ".pepstats", shell = True)
+        subprocess.call("pepstats -sequence " + str(i) + " -outfile " + str(i) + ".pepstats",shell = True)
     print_deco("I have finish searching ever motif in the sequences you selected! \nYou can review the result in the folder called 'motif'.")
 
 
@@ -231,7 +255,7 @@ def PROSITE_db_check(prosite_db_directory = '/localdisk/software/EMBOSS-6.6.0/sh
 
 
 # Search motifs from PROSITE database by using patmatmotifs.
-def motifs_search(): 
+def motifs_search():
     file_name = []
     file_name = glob.glob("./*.fasta")
     for i in file_name:
@@ -239,11 +263,43 @@ def motifs_search():
         subprocess.call("patmatmotifs -sequence " + str(i) + " -auto Y -outfile " + str(file_motif), shell =True)
 
 
+# Generate a report about the motifs that have been found from PROSITE database.
+# The user can choose whether or not send the summary to his/her email
+def summary_email():
+    motif_files = [m for m in glob.glob("./*.motif")]
+    motif_dict = {}
+    HitCount = re.compile('# HitCount:(.*)\n')
+    Motif = re.compile('Motif = (.*)\n')
+    file_check("summary.txt")
+    for m in motif_files:
+        with open(m) as f:
+            data = f.read()
+            motif_num = HitCount.search(data).group(1)
+            motifs = Motif.findall(data)
+            if int(motif_num) > 0:
+                motif_dict[m] = {'no_motifs': motif_num, 'motifs': motifs}
+    file = open("summary.txt", 'w')
+    file.write('Files Analysed:' + str(len(motif_files)) + ' motifs found in: ' + str(len(motif_files)) + str("\n"))
+    for k in motif_dict.keys():
+        file.write('In file: ' + str(k) + ' We have found ' + str(motif_dict[k]['no_motifs']) + ' motifs, and the motif(s) is: ' + str(motif_dict[k]['motifs']) + '\n')      
+    file.close()
+    ans = input_deco("Do you want a summary sent to your email? (y/n) ")
+    if ans.lower() == 'y':
+        ans = input_deco("Please give me you email address.")
+        regular = re.compile(r'[a-zA-Z0-9_@.]')
+        while len(ans) != len(regular.findall(ans)) or '@' not in ans or '.' not in ans:
+            ans = input_deco("You email seems invalid, please try agin.")
+        subprocess.call('mail -s "$DATE" < summary.txt ' + str(ans), shell = True)
+
+
+
 
 
 ################################################################
 # Actually running part
 ### Part 1. Find out want the user want, and download the data
+# Check if the user have installed edirect.
+edirect_check()
 # Ask what the user want and check if the input is correct.
 pro, tax = ask_the_aim_pro()
 count_relative_protein(pro, tax)
@@ -349,11 +405,13 @@ pepstats()
 PROSITE_db_check()
 # Search motifs from PROSITE database by using patmatmotifs.
 motifs_search()
+# Generate a summary result about motifs and ask if the user wants a copy send to his/her email.
+summary_email()
 
 
 
 
-
+print_deco("This is the end of this programe. \nHope your experience is good. \nThanks for using this programe.\nHave a nice day~~BYE")
 
 
 
