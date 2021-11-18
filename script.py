@@ -14,12 +14,6 @@
 
 ################################################################
 # Import section
-def package_check(package):
-    try :
-        import package
-    except :
-        subprocess.call("pip3 install " + str(package), shell = True)
-        import package
 
 import sys
 import os
@@ -29,12 +23,21 @@ import shutil
 import glob
 import string
 
-# package_check(seaborn)
-# package_check(package)
-# package_check(package)
-
+# subprocess.call("pip3 install pandas", shell = True)
+# subprocess.call("pip3 install matplotlib", shell = True)
+# subprocess.call("pip3 install sklearn", shell = True)
+# subprocess.call("pip3 install seaborn", shell = True)
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import sklearn
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.decomposition import PCA
+from pandas.api.types import CategoricalDtype
+import seaborn as sns
+# subprocess.call("pip3 install " + str(package), shell = True)
 ################################################################
-#Function defination area.
+# Function defination area.
 
 # Check if there are file with same name, if there are, remove the file
 def file_check(file_name):
@@ -76,7 +79,25 @@ def edirect_check():
         print_deco('You do not have installed edirect in your home directory, I will install it for you.')
         subprocess.call('sh -c "$(curl -fsSL ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"', shell = True)
         print_deco('You have edirect in you home space, we can continue now.')
-        
+
+
+  # Ask the user where to put the output files, the defual setting is the user home directory.
+def output_path():
+    ans = 'A'
+    while ans.lower() != 'y' and ans.lower() != 'n':
+        ans = input_deco("Do you want to store all the output file in your current working directory? (y/n)")
+    if ans.lower() == 'y':
+        print_deco("Sure! The output files will be stored in your current working directory.")
+        return os. getcwd()
+    if ans.lower() == 'n':
+        ans = input_deco("Sure! Please tell me the path name of where you want to store your output files.")
+        if not os.path.exists(ans):
+            os.mkdir(ans)
+            print_deco('Now we will store everything in '+ str(ans))
+        else:
+            print('Now we will store everything in '+ str(ans))
+        return ans 
+
 
 #check if there is protein inputted with organism inputted in the database.
 def pro_tax_check(pro,tax):
@@ -88,7 +109,6 @@ def pro_tax_check(pro,tax):
 
 # Ask the user to enter the aim protein
 def ask_the_aim_pro():
-    file_check("aim.uids")
     pro = input_deco("Please tell me the protein name you are interested in: " )
     while test_special(pro) != True:
         pro = input_deco("You in put included special character which is not allowed. \nPlease tell me the protein name you are interested in: " )
@@ -99,7 +119,7 @@ def ask_the_aim_pro():
         if character not in string.ascii_letters :
             print_deco("I don't think number should be in taxonomic group name, we will search without group name.")
             tax = False
-    print_deco("Finding the uids that related to " + str(pro))
+    print_deco("Finding the protein sequences that related to " + str(pro))
     # Use esearch then efetch to get the UID values
     return pro, tax
     
@@ -140,11 +160,6 @@ def count_relative_protein(pro, tax):
     while count == 0 :
         pro = input_deco("WARNINGS! \nThere is no such "+str(pro)+" protein in the database, Please start over!\nPlease enter the right name of the protein family:\n")
         ask_the_aim_pro()
-    if count <= 5:
-        i = input_deco("WARNINGS! There are less than 5 relative protein! Please check if you have enter the right protein name! \nif you want to continue with this data please type 'y',\nElse we will start over.")
-        if i.lower() != "y":
-            print_deco("Sorry. I don't understand what you mean. Let's start over.")
-            ask_the_aim_pro()
 
 
 def test_number(n):
@@ -162,13 +177,40 @@ def seq_num_check(num):
     if num >= 1000:
         print_deco("Opps! There are more than 1000 sequences which is too large for us to handle. \nPlease restart this program with other protein.")
         exit()
-    
+    else:
+        # Tell the user what we have found and whether the user want to continue.
+        ans = input_deco("I have found " + str(species_num) + " species from what you want to asked.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
+        if ans == 'q':
+            print_deco("Have a nice day! Bye~")
+            exit()
+
+
+def specific_download(pro, tax):
+    # Ask the user whether she/him wants to include 'partial', 'low quality', 'hypothetical', 'predicted', 'isoform' sequences.
+    specific = []
+    for i in ['partial', 'low quality', 'hypothetical', 'predicted', 'isoform']:
+        ans = input_deco('Do you want to include '+ str(i) + ' in your target sequences? (y/n)')
+        if ans.lower() == 'y':
+            specific.append('NOT ' + str(i).upper() + ' ')
+    print_deco('Your choice is: ' + str(specific) + ' Press any key to start downloding sequences.')
+    file_check(str(pro) + '_' + str(tax) + ".fasta")
+    subprocess.call("esearch -db protein -query "+str(pro)+"[prot] -organism "+str(tax)+''.join(specific)+" | efetch -format fasta > " + str(pro) + '_' + str(tax) + ".fasta", shell = True)
+    # Download the data and count the number of sequences and species. 
+    file_check(str(pro) + "_" + str(tax) + ".txt")
+    subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -format docsum | xtract -pattern DocumentSummary -element Organism > {0}_{1}.txt'.format(pro,tax), shell=True)
+
 
 def clustalo_align(pro, tax):   
     print_deco("I'm currently aligning the sequences.")
     # Align all the protein sequences using clustalo
     # With '--force' we don't need to check whether the ouput file is exsited.
     subprocess.call('clustalo -i ' + str(pro) + '_' + str(tax) + '.fasta -o ' + str(pro) + '_' + str(tax) + '_align.fasta -v --force', shell =True)
+
+
+def hydropathy(pro,tax):
+    print_deco('Generating Hydropathy plot for alignment')
+    subprocess.call('pepwindowall ' + str(pro) + '_' + str(tax) + '_align.fasta -graph svg -goutfile hydropathy', shell = True)
+    print_deco('The Hydropathy plot is generated, it has been stored in hydropathy')
 
 
 def plotcon(filename):
@@ -264,7 +306,7 @@ def motifs_search():
 
 
 # Generate a report about the motifs that have been found from PROSITE database.
-# The user can choose whether or not send the summary to his/her email
+# The user can choose whether or not send the summary to his/her email.
 def summary_email():
     motif_files = [m for m in glob.glob("./*.motif")]
     motif_dict = {}
@@ -292,6 +334,91 @@ def summary_email():
         subprocess.call('mail -s "$DATE" < summary.txt ' + str(ans), shell = True)
 
 
+def create_pd_from_blastp(file):
+    headers=['query_acc.', 'subject_acc.', '%_identity', 'alignment_length', 'mismatches', 'gap_opens', 'query_start', 'query_end', 'subject_start', 'subject_end', 'evalue', 'bit_score']
+    blastdb = pd.read_csv(file, comment = '#', sep ='\t', names = headers)
+    return blastdb
+
+
+def distmat():
+    ans = input_deco("Do you want to generate the distance matrix? (y/n)")
+    if ans.lower() == 'y':
+        subprocess.call('distmat -sequence acc_bitscore_sorted.fasta -outfile distmat.txt -protmethod 0', shell = True)
+        print_deco('The distance matrix is now generated and stored in a file called "distmat.txt".')
+
+
+def PCA_plot(output_path,pro,tax):
+    # Open the alignment output file
+    file = open(str(output_path) + "/"+str(pro)+"_"+str(tax)+"/"+str(pro)+"_"+str(tax)+"_align.fasta", 'r')
+    lines = file.readlines()
+    seq_id = []
+    seq = []
+    temp = ''
+    for l in lines:
+        if l[0] == '>':
+            # head line
+            seq_id.append(l.strip())
+            seq.append(temp)
+            temp = ''
+        else:
+            # Sequence line
+            temp += l.strip()
+    file.close()
+    seq.pop(0)
+    seq_id.pop(-1)
+    org = []
+    # Separate the name of organism
+    for i in seq_id:
+        org.append(i.split('[')[1].strip(']'))
+    seq_sep = []
+    for i in seq:
+        seq_sep.append(list(i))
+    # Store all the sequences in a dataframe
+    align = pd.DataFrame.from_records(seq_sep)
+    # 'org' is the label of each sequences
+    align['organism'] = org
+    align = align.replace('-',np.nan)
+    # Convert all the aa into categorical type
+    ctype = CategoricalDtype(['I', 'Y', 'G', 'Q', 'L', 'S', 'W', 'M', 'N', 'H', '-', 'V', 'D', 'E', 'F', 'A', 'R', 'K', 'C', 'P', 'T'])
+    align_1hot = pd.get_dummies(align.drop('organism', axis=1).astype(ctype))
+    X = align_1hot.values
+    # sub_labels = list(set(org))
+    # Ask if the user want to visualize the sequences variances in a 3D graph
+    ans = input_deco("Do you want to visualize the sequences variances in a 3D graph? (y/n)")
+    # while ans.lower() != 'y' and ans.lower() != 'n':
+    #     ans = input_deco("Do you want to visualize the sequences variances in a 3D graph? (y/n)")
+    if ans.lower() == 'y':
+        PCA_3D_plot(X)
+
+
+def PCA_3D_plot(X):
+    # sub_cats = [sub_labels[label] for label in sub_labels]
+    X_3d = PCA(n_components=3).fit(X).transform(X)
+    fig = plt.figure(1, figsize=(8, 6))
+    ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=30, azim=300,auto_add_to_figure=False)
+    fig.add_axes(ax)
+    ax.scatter(X_3d[:,0], X_3d[:,1], X_3d[:,2])
+    plt.legend(loc='center left', bbox_to_anchor=[1.1, .5])
+    plt.show()   
+
+
+def distmap_heatmap(pro, tax):
+    ans = input_deco("Do you want to generate a heatmap for distant matrix? (y/n)")
+    if ans.lower() == 'y':
+        subprocess.call('clustalo -i acc_bitscore_sorted.fasta --distmat-out=DISTMAT --full', shell = True)
+        file = open("DISTMAT",'r')
+        dist = []
+        lines = file.readlines()
+        for l in lines:
+            dist.append(l.rstrip().split(' '))
+        # dist = list(filter(None, dist))
+        file.close()
+        dist_arr = pd.DataFrame(dist[1:])
+        dist_arr = dist_arr.replace('', None)
+        dist_arr = dist_arr.iloc[:,:-4]
+        sns.set(font_scale=0.6)
+        sns.clustermap(dist_arr.drop([0],axis = 1).astype(float), cmap='rainbow',yticklabels=dist_arr[0])
+        plt.show()
 
 
 
@@ -300,6 +427,9 @@ def summary_email():
 ### Part 1. Find out want the user want, and download the data
 # Check if the user have installed edirect.
 edirect_check()
+# Ask the user where to store the ouput files.
+output_path = output_path()
+os.chdir(output_path)
 # Ask what the user want and check if the input is correct.
 pro, tax = ask_the_aim_pro()
 count_relative_protein(pro, tax)
@@ -311,20 +441,14 @@ os.chdir('{0}/{1}_{2}'.format(os.getcwd(),pro,tax))
 
 # Download the data and count the number of sequences and species. 
 file_check(str(pro) + "_" + str(tax) + ".txt")
-subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -format docsum | xtract -pattern DocumentSummary -element Organism > {0}_{1}.txt'.format(pro,tax), shell=True)
+specific_download(pro,tax)
+# subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -format docsum | xtract -pattern DocumentSummary -element Organism > {0}_{1}.txt'.format(pro,tax), shell=True)
 
 # Count the number of sequences and species.
 seq_num = len(open(str(pro) + '_' + str(tax) + '.txt').readlines())
 species_num = len(set(open('{0}_{1}.txt'.format(pro,tax)).readlines()))
 # Check if the number of sequences is too large.
 seq_num_check(seq_num)
-
-# Tell the user what we have found and whether the user want to continue.
-ans = input_deco("I have found " + str(species_num) + " species and " + str(pro) + " from what you ask for.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
-if ans == 'q':
-    print_deco("Have a nice day!/nBye~")
-    exit()
-
 
 
 ### Part 2. Analyze the conservation between the sequences we found.
@@ -334,6 +458,9 @@ subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch
 
 # Using clustalo to align the consevation area beatween all the sequences.
 clustalo_align(pro, tax)
+
+# Make a plot on hydropathy alignment.
+hydropathy(pro,tax)
 
 # Plot consercation of a sequence alignment.
 plotcon(str(pro) + '_' + str(tax) + '_align.fasta')
@@ -392,7 +519,8 @@ subprocess.call('/localdisk/data/BPSM/Assignment2/pullseq -i ' + str(pro) + '_' 
 ans = input_deco("Do you want to see the plot of blast result by plotcon? (y/n)")
 if ans.lower() == 'y':
     plotcon("acc_bitscore_sorted.fasta")
-
+# Generate a distance matrix.
+distmat()
 
 
 ### Part 3. Scan protein sequence(s) of interest with motifs from the PROSITE database
@@ -408,7 +536,53 @@ motifs_search()
 # Generate a summary result about motifs and ask if the user wants a copy send to his/her email.
 summary_email()
 
+### Part 4. Extra ploting (PCA)(Heatmap).
+PCA_plot(output_path,pro,tax)
+distmap_heatmap(pro,tax)
 
+################################################################
+# I tried to use different classifier to classify the protein sequences.
+# However the training data is too little, thus the classifier seems not very accurate
+
+# from sklearn.metrics import adjusted_rand_score
+# from sklearn.ensemble import RandomForestClassifier
+# for ii in range(2, len(X)):
+#     X_pca = PCA(n_components = ii).fit_transform(X)
+#     rf = RandomForestClassifier(n_estimators=100, random_state=0, oob_score=True)
+#     rf.fit(X_pca, org)
+#     y_pred = np.argmax(rf.oob_decision_function_, axis=1)
+#     print('Random Forests on {}D PCA:\nARI: {}, Mean Accuracy: {}\n\n'.
+#           format(ii, adjusted_rand_score(org, y_pred), rf.oob_score_))
+# rf = RandomForestClassifier(n_estimators=100, random_state=0, oob_score=True)
+# rf.fit(X, org)
+# y_pred = np.argmax(rf.oob_decision_function_, axis=1)
+# print('Random Forest on Full Data\nARI: {}, Mean Accuracy: {}\n\n'.
+#       format(adjusted_rand_score(org, y_pred), rf.oob_score_))
+
+
+# from sklearn.naive_bayes import GaussianNB
+# for ii in range(2, len(X)):
+#     X_pca = PCA(n_components = ii).fit_transform(X)
+#     gnb = GaussianNB()
+#     gnb.fit(X_pca, org)
+#     y_pred = gnb.predict(X_pca)
+#     print('Gaussian Naive Bayes on {}D PCA:\nARI: {}, Mean Accuracy: {}\n\n'.
+#           format(ii, adjusted_rand_score(org, y_pred), gnb.score(X_pca, org)))
+# gnb = GaussianNB()
+# gnb.fit(X, org)
+# y_pred = gnb.predict(X)
+# print('Gaussian Naive Bayes on Full Data\nARI: {}, Mean Accuracy: {}\n\n'.
+#       format(adjusted_rand_score(org, y_pred), gnb.score(X, org)))
+
+
+# from sklearn.cluster import KMeans
+# for ii in range(2, len(X)):
+#     X_pca = PCA(n_components = ii).fit_transform(X)
+#     km = KMeans(n_clusters=6, random_state=0)  
+#     km.fit(X_pca)
+#     y_pred = km.labels_
+#     print('k-means with 6 clusters on {}D PCA:\nARI: {}, Inertia: {}\n\n'.
+#           format(ii, adjusted_rand_score(org, y_pred), km.inertia_))
 
 
 print_deco("This is the end of this programe. \nHope your experience is good. \nThanks for using this programe.\nHave a nice day~~BYE")
