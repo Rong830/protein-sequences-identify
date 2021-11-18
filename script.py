@@ -12,6 +12,16 @@
 # 7. Conclude the results about motif and send summary email to the user
 # 8. Check if the user have the imported package and edirect and PROSITE database
 
+# EMBOSS softwares I used
+# plotcon
+# infoalign
+# Cons
+# seqretsplit
+# patmatmotif
+# pepstats
+# pepwindowall
+# distmat
+
 ################################################################
 # Import section
 
@@ -23,10 +33,10 @@ import shutil
 import glob
 import string
 
-# subprocess.call("pip3 install pandas", shell = True)
-# subprocess.call("pip3 install matplotlib", shell = True)
-# subprocess.call("pip3 install sklearn", shell = True)
-# subprocess.call("pip3 install seaborn", shell = True)
+subprocess.call("pip3 install pandas", shell = True)
+subprocess.call("pip3 install matplotlib", shell = True)
+subprocess.call("pip3 install sklearn", shell = True)
+subprocess.call("pip3 install seaborn", shell = True)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -115,12 +125,11 @@ def ask_the_aim_pro():
     tax = input_deco("Pleas tell me the name of its taxonomic group: " )
     while test_special(tax) != True:
         tax = input_deco("You in put included special character which is not allowed. \nPlease tell me the taxonomic group name: " )
-    for character in tax:
-        if character not in string.ascii_letters :
-            print_deco("I don't think number should be in taxonomic group name, we will search without group name.")
-            tax = False
+        for character in tax:
+            if character not in string.ascii_letters :
+                print_deco("I don't think number should be in taxonomic group name, we will search without group name.")
+                tax = False
     print_deco("Finding the protein sequences that related to " + str(pro))
-    # Use esearch then efetch to get the UID values
     return pro, tax
     
 
@@ -138,22 +147,18 @@ def mkdir(folder_name):
 # Count the number of relative protein in the database
 def pro_count(pro):
 	count = int(subprocess.check_output("esearch -db protein -query '{0}' | xtract -pattern ENTREZ_DIRECT -element Count".format(pro),shell=True))
-	if count == 0:
-		return False
-	return True 
+	return count 
 
 
 def pro_tax_count(pro,tax):
 	count = int(subprocess.check_output("esearch -db protein -query '{0}[prot]' -organism '{1}' | xtract -pattern ENTREZ_DIRECT -element Count".format(pro,tax),shell=True))
-	if count == 0:
-		return False
-	return True 
+	return count
 
 
 # Count the number of relative proteins
 def count_relative_protein(pro, tax):
     print_deco('Counting the number of relative protein')
-    count = pro_count(pro)
+    count = pro_tax_count(pro,tax)
     while count >= 1000 :
         pro = input_deco("WARNINGS! There are more than 1000 relative protein! Please check if you have enter the right protein name! \nPlease enter the right name of the protein family:\n")
         ask_the_aim_pro()
@@ -172,25 +177,12 @@ def test_number(n):
     return int(n)
 
 
-def seq_num_check(num):
-    # If the number of sequences is more than 1000, we can't continue due to the huge data.
-    if num >= 1000:
-        print_deco("Opps! There are more than 1000 sequences which is too large for us to handle. \nPlease restart this program with other protein.")
-        exit()
-    else:
-        # Tell the user what we have found and whether the user want to continue.
-        ans = input_deco("I have found " + str(species_num) + " species from what you want to asked.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
-        if ans == 'q':
-            print_deco("Have a nice day! Bye~")
-            exit()
-
-
 def specific_download(pro, tax):
     # Ask the user whether she/him wants to include 'partial', 'low quality', 'hypothetical', 'predicted', 'isoform' sequences.
     specific = []
     for i in ['partial', 'low quality', 'hypothetical', 'predicted', 'isoform']:
         ans = input_deco('Do you want to include '+ str(i) + ' in your target sequences? (y/n)')
-        if ans.lower() == 'y':
+        if ans.lower() == 'n':
             specific.append('NOT ' + str(i).upper() + ' ')
     print_deco('Your choice is: ' + str(specific) + ' Press any key to start downloding sequences.')
     file_check(str(pro) + '_' + str(tax) + ".fasta")
@@ -198,6 +190,20 @@ def specific_download(pro, tax):
     # Download the data and count the number of sequences and species. 
     file_check(str(pro) + "_" + str(tax) + ".txt")
     subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -format docsum | xtract -pattern DocumentSummary -element Organism > {0}_{1}.txt'.format(pro,tax), shell=True)
+
+
+def seq_num_check(num):
+    # If the number of sequences is more than 1000, we can't continue due to the huge data.
+    if num >= 1000:
+        print_deco("Opps! There are more than 1000 sequences which is too large for us to handle. \nPlease restart this program with other protein.")
+        exit()
+    else:
+        species_num = len(set(open('{0}_{1}.txt'.format(pro,tax)).readlines()))
+        # Tell the user what we have found and whether the user want to continue.
+        ans = input_deco("I have found " + str(species_num) + " species from what you want to asked.\nDo you want to continue analyze? \nPress any key to continue, type 'q' to exit this program.")
+        if ans.lower() == 'q':
+            print_deco("Have a nice day! Bye~")
+            exit()
 
 
 def clustalo_align(pro, tax):   
@@ -239,8 +245,8 @@ def clustalo_percent_change(pro, tax):
         f1 = open("output1.infoalign").read().rstrip("\n") 
         keys = list(f1.split("\n")) 
         f2 = open("output2.infoalign").read().rstrip("\n") 
-        list2 = f2.split("\n") 
-        values = list(map(float, list2))
+        l = f2.split("\n") 
+        values = list(map(float, l))
         dic = dict(zip(keys, values))
         dic = sorted(dic.items(), key=lambda values:values[1])
         ans = input_deco("The percentage changes are sorted from low to hign.\nDo you want to store them? (y/n) \n\n"+str(dic))
@@ -253,12 +259,19 @@ def clustalo_percent_change(pro, tax):
             file.close()
 
 
+def consensus_sequence(pro,tax):
+    print_deco('Using the EMBOSS Cons to get the consensus sequence from Clustalo output.')
+    file_check(str(pro) + '_' + str(tax) + '_consensus.fasta')
+    subprocess.call('cons -plurality 0.8 -sequence ' + str(pro) + '_' + str(tax) + '_align.fasta -outseq ' + str(pro) + '_' + str(tax) + '_consensus.fasta', shell=True) 
+    print_deco('Consensus has been created now.')
+
+
 def create_blastdb(pro, tax):
     # Make a blast database from fasta files and save them to an output for user when doing blastp processing. 
     print_deco('I am creating a blastdb from fasta files')
     file_check(str(pro) + "_" + str(tax) + "_database")
     subprocess.call("makeblastdb -in " + str(pro) + "_" + str(tax) + ".fasta -dbtype prot -out " + str(pro) + "_" + str(tax) + "_database", shell = True)
-    print_deco('I have now created blastdb.')
+    print_deco('I have now created blast database.')
 
 
 def pepstats():
@@ -392,7 +405,6 @@ def PCA_plot(output_path,pro,tax):
 
 
 def PCA_3D_plot(X):
-    # sub_cats = [sub_labels[label] for label in sub_labels]
     X_3d = PCA(n_components=3).fit(X).transform(X)
     fig = plt.figure(1, figsize=(8, 6))
     ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=30, azim=300,auto_add_to_figure=False)
@@ -446,37 +458,30 @@ specific_download(pro,tax)
 
 # Count the number of sequences and species.
 seq_num = len(open(str(pro) + '_' + str(tax) + '.txt').readlines())
-species_num = len(set(open('{0}_{1}.txt'.format(pro,tax)).readlines()))
+
 # Check if the number of sequences is too large.
 seq_num_check(seq_num)
 
-
-### Part 2. Analyze the conservation between the sequences we found.
 # Download the fasta files to the current directory.
 print_deco("Sure! Now I will download the fasta files that related to what you searching for.")
 subprocess.call('esearch -db protein -query "{0}[prot]" -organism "{1}" | efetch -format fasta > {0}_{1}.fasta'.format(pro,tax), shell=True)
 
-# Using clustalo to align the consevation area beatween all the sequences.
-clustalo_align(pro, tax)
 
+### Part 2. Analyze the conservation between the sequences we found.
+
+# Using clustalo to align the conservation area between all the sequences.
+clustalo_align(pro, tax)
 # Make a plot on hydropathy alignment.
 hydropathy(pro,tax)
-
-# Plot consercation of a sequence alignment.
+# Plot consecration of a sequence alignment.
 plotcon(str(pro) + '_' + str(tax) + '_align.fasta')
-
 # Calculate the percentage changes.
 clustalo_percent_change(pro, tax)
+# Using the EMBOSS Cons to get the consensus sequence from Clustalo output.
+consensus_sequence(pro,tax)
 
 # Starting to do blastdb
 create_blastdb(pro, tax)
-
-# Using the EMBOSS Cons to get the consensus sequence from Clustalo output.
-print_deco('Using the EMBOSS Cons to get the consensus sequence from Clustalo output.')
-file_check(str(pro) + '_' + str(tax) + '_consensus.fasta')
-subprocess.call('cons -plurality 0.8 -sequence ' + str(pro) + '_' + str(tax) + '_align.fasta -outseq ' + str(pro) + '_' + str(tax) + '_consensus.fasta', shell=True) 
-print_deco('Consensus has been created now.')
-
 # Using blastp to blast the protein that the user is interested in.
 print_deco('Using blastp to search this file: ' + str(pro) + '_' + str(tax) + '_consensus.fasta in blastdb')
 subprocess.call('blastp -db ' + str(pro) + '_' + str(tax) + '_database -query ' + str(pro) + '_' + str(tax) + '_consensus.fasta -outfmt 7 -out ' + str(pro) + '_' + str(tax) + '_blast.txt', shell = True)
