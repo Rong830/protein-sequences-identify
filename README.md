@@ -1,1 +1,4 @@
 # protein-sequences-indetify
+
+this scipt will allow the user:
+to identify a family of protein sequences from a user-defined subset of the taxonomic tree (e.g. glucose-6-phosphatase proteins from Aves (birds), or ABC transporters in mammals, or kinases in rodents, or adenyl cyclases in vertebrates etc.) that could then be processed using, for example, one or more of the EMBOSS programmes installed on the MSc server: to determine, and plot, the level of protein sequence conservation across the species within that taxonomic group to scan the protein sequence(s) of interest with motifs from the PROSITE database, to determine whether any known motifs (domains) are associated with this subset of sequences to do any other appropriate EMBOSS (or other) analysis that you think might add relevant biological information to the outputs
