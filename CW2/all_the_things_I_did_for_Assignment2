@@ -1,0 +1,77 @@
+commit 4ad1851c7e4b27836dcbf093618c2111fd19f719
+Author: B200735 <Hello Al>
+Date:   Sun Nov 21 21:59:24 2021 +0000
+
+    Fixed a few bugs and spelling mistakes.
+
+commit a033377a63e31aaef1c9490ac5b472453f39f442
+Author: B200735 <Hello Al>
+Date:   Thu Nov 18 23:49:05 2021 +0000
+
+    Add a few small changes. Fixed a few mistakes.
+
+commit df3a4af14a49fd8c3d99e5e43ce68eb2e57fa20a
+Author: B200735 <Hello Al>
+Date:   Thu Nov 18 13:38:25 2021 +0000
+
+    Add aditional visulazation (3D PCA and Cluster Heatmap)
+
+commit c1b6149df74b0e74a3ed22a92fc158abb511e262
+Author: B200735 <Hello Al>
+Date:   Tue Nov 16 20:54:21 2021 +0000
+
+    Generate a summary about the motifs and can be sent to user's email.
+
+commit 953f16d9a13f3a8bdbc961c5c5d48fb69a50cb50
+Author: B200735 <Hello Al>
+Date:   Wed Nov 10 18:09:35 2021 +0000
+
+    Search motifs from PROSITE database by using patmatmotifs.
+
+commit 57f2eb594a70f7f29c0044310a5cbb3559870ad1
+Author: B200735 <Hello Al>
+Date:   Wed Nov 10 14:28:13 2021 +0000
+
+    Use the Use the EMBOSS Cons to get the consensus sequence, and use 'pullseq' to extract the seqs after blast.
+
+commit 0d866c98dc0d71535b47de74795ca9935b9bc82d
+Author: B200735 <Hello Al>
+Date:   Tue Nov 9 21:04:19 2021 +0000
+
+    Calculated the the percetage changes by using infoalign.
+
+commit 070085557d2c4d841c4979f9bdf553c452cf1252
+Author: B200735 <Hello Al>
+Date:   Tue Nov 9 20:14:51 2021 +0000
+
+    Check the species number and ask whether the user want to continue.
+
+commit d6605031da61c55426ba9f75f0532725ccb1efdd
+Author: B200735 <Hello Al>
+Date:   Tue Nov 9 20:01:00 2021 +0000
+
+    Ask the uesr what he/she wants and check the input.
+
+commit 49f9b0b51fbcfe3717a867277f226d898a2cb4df
+Author: B200735 <Hello Al>
+Date:   Tue Nov 9 14:15:49 2021 +0000
+
+    Use clustalo to do alignment of the sequences.
+
+commit a8295d534ca8bdbcfe9cdfc142251a0e356b571c
+Author: B200735 <Hello Al>
+Date:   Mon Nov 8 22:28:24 2021 +0000
+
+    Let user to decied how many species he want his dataset has.
+
+commit c83136c2d8593e37cddfca1d1a70e22c04fcf1bf
+Author: B200735 <Hello Al>
+Date:   Mon Nov 8 21:12:57 2021 +0000
+
+    Ask what protein the user want and searched by esearch.
+
+commit e43f8b802413e175c20b5a90f8318c2d60acb2ab
+Author: B200735 <Hello Al>
+Date:   Mon Nov 8 18:01:39 2021 +0000
+
+    Use esearch to find relavent protein uid list.“
